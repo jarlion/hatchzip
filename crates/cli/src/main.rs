@@ -72,6 +72,9 @@ fn open(
     output: Option<std::path::PathBuf>,
     writable: bool,
     secret: Secret,
+    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+    /// Set by `--no-space-check`, which never needs the plan.
+    scan: bool,
 ) -> Result<(State, Paths)> {
     let (primary, paths) = locate(archive)?;
     // A compressed tar is read in full before anything else, which can take
@@ -101,6 +104,7 @@ fn open(
             }
             rpassword::prompt_password("Password: ").ok()
         },
+        scan,
     )?;
     Ok((state, paths))
 }
@@ -200,7 +204,7 @@ fn report(job: &Job, out: &Path, journal: Option<&Journal>, keep_free: u64) -> R
 }
 
 fn check(target: Target, space: Space) -> Result<ExitCode> {
-    let (state, _) = open(&target.archive, target.output, false, target.secret)?;
+    let (state, _) = open(&target.archive, target.output, false, target.secret, true)?;
     let fits = match state {
         State::Fresh(job, out) => report(&job, &out, None, space.keep_free)?,
         State::Resume(job, journal) => {
@@ -219,7 +223,7 @@ fn check(target: Target, space: Space) -> Result<ExitCode> {
 }
 
 fn list(archive: &Path, secret: Secret) -> Result<ExitCode> {
-    let job = match open(archive, None, false, secret)?.0 {
+    let job = match open(archive, None, false, secret, true)?.0 {
         State::Fresh(job, _) | State::Resume(job, _) => job,
         State::Orphan(_) => bail!("no entries remain in this archive"),
     };
@@ -246,7 +250,7 @@ fn list(archive: &Path, secret: Secret) -> Result<ExitCode> {
 }
 
 fn test_command(archive: &Path, secret: Secret) -> Result<ExitCode> {
-    let job = match open(archive, None, false, secret)?.0 {
+    let job = match open(archive, None, false, secret, true)?.0 {
         State::Fresh(job, _) => job,
         _ => bail!(
             "this archive is partially extracted and cannot be tested. Run extract to resume it, or restore to undo it"
@@ -292,7 +296,13 @@ fn extract(
     no_space_check: bool,
 ) -> Result<ExitCode> {
     let keep_free = space.keep_free;
-    let (state, paths) = open(&target.archive, target.output, true, target.secret)?;
+    let (state, paths) = open(
+        &target.archive,
+        target.output,
+        true,
+        target.secret,
+        !no_space_check,
+    )?;
     let (job, journal) = match state {
         State::Orphan(journal) => {
             engine::finish_orphaned(&journal, &paths)?;

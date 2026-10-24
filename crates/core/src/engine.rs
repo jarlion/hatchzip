@@ -89,9 +89,15 @@ impl Job {
     /// `password` is only needed for encrypted archives. A missing one shows
     /// up as [`archive::PasswordNeeded`], from here or from
     /// [`Job::check_password`].
-    pub fn open(path: &Path, writable: bool, password: Option<&str>) -> Result<Self> {
+    pub fn open(
+        path: &Path,
+        writable: bool,
+        password: Option<&str>,
+        /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+        scan: bool,
+    ) -> Result<Self> {
         let storage = Arc::new(Storage::open(path, writable)?);
-        let opened = archive::open(&storage, None, password)?;
+        let opened = archive::open(&storage, None, password, scan)?;
         let top = storage.original_len();
         Self::build(storage, opened, top)
     }
@@ -118,7 +124,12 @@ impl Job {
             storage.set_len(journal.committed_len)?;
         }
         let point = journal.resume.as_ref();
-        let opened = archive::open(&storage, Some((&journal.format, tail, point)), password)?;
+        let opened = archive::open(
+            &storage,
+            Some((&journal.format, tail, point)),
+            password,
+            true,
+        )?;
         let mut job = Self::build(storage, opened, journal.committed_len)?;
         if let Some(r) = &journal.resume {
             // Only the highest uncommitted unit is ever streamed, so a point
@@ -918,7 +929,11 @@ impl Run<'_> {
             Some(s) => s.profile.clone(),
             None => bail!("the archive is not a compressed stream"),
         };
-        let mut left = profile.files;
+        // A skipped scan (--no-space-check) leaves `profile.files` at 0; treat
+        // that as "remaining output unknown" with `u64::MAX` so the per-point
+        // guard still enforces a safe step-sized bound instead of demanding room
+        // for all output, or bailing outright.
+        let mut left = if profile.files > 0 { profile.files } else { u64::MAX };
         // This run hasn't punched anything yet. Its first punch starts at 0,
         // in case the last run stopped between journaling a point and
         // punching up to it.
@@ -936,6 +951,14 @@ impl Run<'_> {
             }
             match walk.next(BUF_SIZE)? {
                 Event::Entry { item, link, done } => {
+                    // A skipped scan (--no-space-check) leaves `units[i].items`
+                    // empty; rebuild it as we decode the one stream, so the
+                    // final entry count and `commit`'s dir sync stay correct.
+                    // A scanned open already filled it, so this is a no-op
+                    // then, and for a resumed run, which always scans.
+                    if self.job.units[i].items.is_empty() {
+                        self.job.units[i].items.push(item.clone());
+                    }
                     let dest = out.join(&item.path);
                     let what = || format!("extracting '{}'", item.path.display());
                     match &item.kind {
@@ -1116,9 +1139,15 @@ impl Run<'_> {
     /// `left` is the output still to write.
     fn ensure_room(&self, out: &Path, what: &str, left: u64, punching: Option<u64>) -> Result<()> {
         let avail = fsutil::available_space(out)?.saturating_sub(self.keep_free);
+        // `left == u64::MAX` marks "remaining output unknown" (skipped scan):
+        // clamp it so `next_multiple_of` cannot overflow, then fall back to a
+        // safe per-step bound instead of the full-output requirement.
+        let unknown = left == u64::MAX;
+        let left = if unknown { u64::MAX - 4096 } else { left };
         let left = left.next_multiple_of(4096);
         let need = match punching {
             Some(granule) => (stream_step() + BUF_SIZE as u64 + 2 * granule).min(left),
+            None if unknown => stream_step() + 2 * BUF_SIZE as u64,
             None => left,
         };
         if need > avail {

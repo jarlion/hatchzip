@@ -1933,7 +1933,7 @@ dependencies = [
 
 [[package]]
 name = "hatchzip"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anstream",
  "anstyle",
@@ -1955,7 +1955,7 @@ dependencies = [
 
 [[package]]
 name = "hatchzip-core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "crc32fast",
@@ -1973,7 +1973,7 @@ dependencies = [
 
 [[package]]
 name = "hatchzip-gui"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1994,7 +1994,7 @@ dependencies = [
 
 [[package]]
 name = "hatchzip-shell"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "tempfile",

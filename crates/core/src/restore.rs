@@ -199,7 +199,7 @@ pub fn restore(archive: &Path) -> Result<Restored> {
 /// Opens the archive as a fresh one, the way a later extraction would, and
 /// lists what is in it.
 fn reopen(primary: &Path) -> Result<Vec<(PathBuf, Kind, u64)>> {
-    let job = Job::open(primary, false, None)?;
+    let job = Job::open(primary, false, None, true)?;
     let mut found: Vec<_> = job
         .units
         .iter()

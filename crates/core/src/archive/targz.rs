@@ -489,7 +489,12 @@ struct TarGz {
 /// Walks the archive from `from`, or from its start, listing what is left
 /// and measuring it. Damage anywhere is found here, before anything is
 /// touched.
-pub fn open(storage: &Arc<Storage>, from: Option<&Resume>) -> Result<Opened> {
+///
+/// With `scan` false and a fresh open (`from` is `None`) the full measuring
+/// pass is skipped: the entry list and `Profile` are left empty and
+/// `stream_solid` does the only decode. Used by `--no-space-check`, which never
+/// needs the plan, so the archive is not decoded twice.
+pub fn open(storage: &Arc<Storage>, from: Option<&Resume>, scan: bool) -> Result<Opened> {
     let mut solid = Solid {
         storage: storage.clone(),
         from: from.cloned(),
@@ -501,9 +506,13 @@ pub fn open(storage: &Arc<Storage>, from: Option<&Resume>) -> Result<Opened> {
         .unwrap_or_default()
         .to_string_lossy()
         .into_owned();
-    let (items, profile) = scan(&solid, from)
-        .map_err(|e| anyhow::Error::new(super::Damaged(e)))
-        .with_context(|| format!("checking {name} (nothing was changed)"))?;
+    let (items, profile) = if !scan && from.is_none() {
+        (Vec::new(), Profile::default())
+    } else {
+        scan(&solid, from)
+            .map_err(|e| anyhow::Error::new(super::Damaged(e)))
+            .with_context(|| format!("checking {name} (nothing was changed)"))?
+    };
     solid.profile = profile;
     Ok(Opened {
         name: NAME,

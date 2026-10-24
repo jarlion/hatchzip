@@ -46,7 +46,7 @@ fn load(archive: &Path, password: Option<String>) -> Result<Loaded> {
         .to_string_lossy()
         .into_owned();
     let (state, password) =
-        session::open_encrypted(&primary, &paths, None, false, password, |wrong| {
+        session::open_encrypted(&primary, &paths, None, false, password, true, |wrong| {
             crate::password::ask(&file_name, wrong)
         })?;
     let (job, mode, output, total, left) = match state {

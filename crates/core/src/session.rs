@@ -40,6 +40,8 @@ pub fn open(
     output: Option<PathBuf>,
     writable: bool,
     password: Option<&str>,
+    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+    scan: bool,
 ) -> Result<State> {
     if paths.exists() {
         let (mut journal, tail) = Journal::load(paths)?;
@@ -66,7 +68,7 @@ pub fn open(
         let job = Job::resume(&journal, tail, writable, password)?;
         return Ok(State::Resume(job, journal));
     }
-    let job = Job::open(primary, writable, password)?;
+    let job = Job::open(primary, writable, password, scan)?;
     let output = match output {
         Some(o) => std::path::absolute(o)?,
         None => default_output(primary),
@@ -89,6 +91,8 @@ pub fn open_encrypted(
     writable: bool,
     mut password: Option<String>,
     mut ask: impl FnMut(bool) -> Option<String>,
+    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+    scan: bool,
 ) -> Result<(State, Option<String>)> {
     let mut wrong = false;
     loop {
@@ -98,6 +102,7 @@ pub fn open_encrypted(
             output.clone(),
             writable,
             password.as_deref(),
+            scan,
         );
         let failure = match attempt {
             Ok(State::Orphan(j)) => return Ok((State::Orphan(j), password)),

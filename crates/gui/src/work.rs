@@ -179,6 +179,7 @@ fn open(
     output: Option<PathBuf>,
     writable: bool,
     secret: Secret,
+    scan: bool,
     send: &dyn Fn(Update),
 ) -> Result<State> {
     let given = secret.password.clone();
@@ -189,6 +190,7 @@ fn open(
         writable,
         secret.password,
         secret.ask,
+        scan,
     )?;
     if let Some(p) = used
         && Some(&p) != given.as_ref()
@@ -210,7 +212,7 @@ fn extract(
 ) -> Result<()> {
     send(Update::Checking);
     let (primary, paths) = session::locate(archive)?;
-    let (job, journal) = match open(&primary, &paths, output, true, secret, send)? {
+    let (job, journal) = match open(&primary, &paths, output, true, secret, !no_space_check, send)? {
         State::Orphan(journal) => {
             engine::finish_orphaned(&journal, &paths)?;
             send(Update::Extracted(journal.output));
