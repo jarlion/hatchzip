@@ -41,6 +41,9 @@ pub enum Request {
         output: Option<PathBuf>,
         keep_free: u64,
         verify_first: bool,
+        /// When true, skip the pre-flight space check and start extracting
+        /// immediately; the runtime guards still pause on a full disk.
+        no_space_check: bool,
         password: Option<String>,
     },
     Test {
@@ -121,11 +124,13 @@ pub fn run(request: &Request, counters: &Arc<Counters>, send: &dyn Fn(Update), a
             keep_free,
             verify_first,
             password,
+            no_space_check,
         } => extract(
             archive,
             output.clone(),
             *keep_free,
             *verify_first,
+            *no_space_check,
             Secret {
                 password: password.clone(),
                 ask,
@@ -198,6 +203,7 @@ fn extract(
     output: Option<PathBuf>,
     keep_free: u64,
     verify_first: bool,
+    no_space_check: bool,
     secret: Secret,
     counters: &Arc<Counters>,
     send: &dyn Fn(Update),
@@ -211,22 +217,26 @@ fn extract(
             return Ok(());
         }
         State::Resume(job, journal) => {
-            let plan = session::plan(&job, &journal.output, true, keep_free)?;
-            if !plan.fits {
-                send(Update::NoSpace(plan));
-                return Ok(());
+            if !no_space_check {
+                let plan = session::plan(&job, &journal.output, true, keep_free)?;
+                if !plan.fits {
+                    send(Update::NoSpace(plan));
+                    return Ok(());
+                }
+                send(Update::Planned(plan));
             }
-            send(Update::Planned(plan));
             session::clear_uncommitted(&job, &journal.output)?;
             (job, journal)
         }
         State::Fresh(job, out) => {
-            let plan = session::plan(&job, &out, false, keep_free)?;
-            if !plan.fits {
-                send(Update::NoSpace(plan));
-                return Ok(());
+            if !no_space_check {
+                let plan = session::plan(&job, &out, false, keep_free)?;
+                if !plan.fits {
+                    send(Update::NoSpace(plan));
+                    return Ok(());
+                }
+                send(Update::Planned(plan));
             }
-            send(Update::Planned(plan));
             if verify_first {
                 verify(&job, counters, send)
                     .context("the archive is damaged; no files were extracted")?;
@@ -441,6 +451,7 @@ mod tests {
             output: out,
             keep_free: 0,
             verify_first,
+            no_space_check: false,
             password: None,
         }
     }
@@ -549,6 +560,7 @@ mod tests {
             output: None,
             keep_free: u64::MAX / 4,
             verify_first: false,
+            no_space_check: false,
             password: None,
         };
         assert_eq!(collect(&request, &counters), ["checking", "no space"]);

@@ -25,6 +25,11 @@ pub const ACTIONS: &[Action] = &[
         flag: "--extract-here",
     },
     Action {
+        id: "extract-here-fast",
+        label: "Extract here (skip check)",
+        flag: "--no-space-check --extract-here",
+    },
+    Action {
         id: "extract-to",
         label: "Extract to a new folder",
         flag: "--extract-to",

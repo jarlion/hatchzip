@@ -24,8 +24,8 @@ pub fn output_for(kind: TaskKind, primary: &Path) -> Option<PathBuf> {
     }
 }
 
-pub fn run(kind: TaskKind, archive: PathBuf) -> Result<()> {
-    let (ui, start) = build(kind, archive, Settings::saved())?;
+pub fn run(kind: TaskKind, archive: PathBuf, no_space_check: bool) -> Result<()> {
+    let (ui, start) = build(kind, archive, Settings::saved(), no_space_check)?;
     crate::backend::when_drawn(ui.window(), start);
     ui.run()?;
     Ok(())
@@ -38,6 +38,7 @@ pub fn build(
     kind: TaskKind,
     archive: PathBuf,
     settings: Settings,
+    no_space_check: bool,
 ) -> Result<(TaskWindow, impl FnOnce() + 'static)> {
     let ui = TaskWindow::new()?;
     // Only resolves the path; a missing file is reported by the run itself.
@@ -56,6 +57,7 @@ pub fn build(
                 output: Some(out.clone()),
                 keep_free: settings.keep_free,
                 verify_first: settings.verify_first,
+                no_space_check,
                 password: None,
             },
         ),

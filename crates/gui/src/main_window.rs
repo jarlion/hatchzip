@@ -507,6 +507,7 @@ impl App {
             output: (self.mode.get() == Mode::Fresh).then(|| output.clone()),
             keep_free: self.keep_free.get(),
             verify_first: ui.get_verify_first(),
+            no_space_check: false,
             password: self.password.borrow().clone(),
         };
         // On Windows our read handle would block the exclusive one the

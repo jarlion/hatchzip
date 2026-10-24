@@ -37,6 +37,9 @@ pub struct Args {
     /// Remove HatchZip from the file manager's right-click menu, then exit
     #[arg(long)]
     pub unregister_shell: bool,
+    /// Extract without first checking that there is enough free space
+    #[arg(long)]
+    pub no_space_check: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,7 +54,7 @@ pub enum Launch {
     /// The main window, empty or with an archive open.
     Main(Option<PathBuf>),
     /// A small window that runs one task, started from a right-click.
-    Task(TaskKind, PathBuf),
+    Task(TaskKind, PathBuf, bool),
     /// Installers run these; no window opens.
     RegisterShell,
     UnregisterShell,
@@ -64,11 +67,11 @@ impl Args {
         } else if self.unregister_shell {
             Launch::UnregisterShell
         } else if let Some(a) = self.extract_here {
-            Launch::Task(TaskKind::ExtractHere, a)
+            Launch::Task(TaskKind::ExtractHere, a, self.no_space_check)
         } else if let Some(a) = self.extract_to {
-            Launch::Task(TaskKind::ExtractTo, a)
+            Launch::Task(TaskKind::ExtractTo, a, self.no_space_check)
         } else if let Some(a) = self.test {
-            Launch::Task(TaskKind::Test, a)
+            Launch::Task(TaskKind::Test, a, false)
         } else {
             Launch::Main(self.archive)
         }
@@ -101,19 +104,19 @@ mod tests {
         );
         assert_eq!(
             parse(&["--extract-here", "a b/game.7z.001"]).unwrap(),
-            Launch::Task(TaskKind::ExtractHere, "a b/game.7z.001".into())
+            Launch::Task(TaskKind::ExtractHere, "a b/game.7z.001".into(), false)
         );
         assert_eq!(
             parse(&["--extract-to", "game.zip"]).unwrap(),
-            Launch::Task(TaskKind::ExtractTo, "game.zip".into())
+            Launch::Task(TaskKind::ExtractTo, "game.zip".into(), false)
         );
         assert_eq!(
             parse(&["--test", "game.tar"]).unwrap(),
-            Launch::Task(TaskKind::Test, "game.tar".into())
+            Launch::Task(TaskKind::Test, "game.tar".into(), false)
         );
         assert_eq!(
             parse(&["--extract-here=game.zip"]).unwrap(),
-            Launch::Task(TaskKind::ExtractHere, "game.zip".into())
+            Launch::Task(TaskKind::ExtractHere, "game.zip".into(), false)
         );
     }
 
@@ -134,5 +137,17 @@ mod tests {
         assert!(parse(&["a.zip", "--extract-here", "b.zip"]).is_err());
         assert!(parse(&["--extract-here"]).is_err());
         assert!(parse(&["a.zip", "b.zip"]).is_err());
+    }
+
+    #[test]
+    fn no_space_check_flag_is_carried() {
+        assert_eq!(
+            parse(&["--no-space-check", "--extract-here", "game.zip"]).unwrap(),
+            Launch::Task(TaskKind::ExtractHere, "game.zip".into(), true)
+        );
+        assert_eq!(
+            parse(&["--extract-here", "game.zip"]).unwrap(),
+            Launch::Task(TaskKind::ExtractHere, "game.zip".into(), false)
+        );
     }
 }

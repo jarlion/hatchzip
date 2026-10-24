@@ -112,7 +112,8 @@ fn run(command: Command) -> Result<ExitCode> {
             verify_first,
             space,
             yes,
-        } => extract(target, verify_first, space, yes),
+            no_space_check,
+        } => extract(target, verify_first, space, yes, no_space_check),
         Command::Check { target, space } => check(target, space),
         Command::List { archive, secret } => list(&archive, secret),
         Command::Test { archive, secret } => test_command(&archive, secret),
@@ -283,7 +284,13 @@ fn restore(archive: &Path) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn extract(target: Target, verify_first: bool, space: Space, yes: bool) -> Result<ExitCode> {
+fn extract(
+    target: Target,
+    verify_first: bool,
+    space: Space,
+    yes: bool,
+    no_space_check: bool,
+) -> Result<ExitCode> {
     let keep_free = space.keep_free;
     let (state, paths) = open(&target.archive, target.output, true, target.secret)?;
     let (job, journal) = match state {
@@ -296,15 +303,20 @@ fn extract(target: Target, verify_first: bool, space: Space, yes: bool) -> Resul
             return Ok(ExitCode::SUCCESS);
         }
         State::Resume(job, journal) => {
-            if !report(&job, &journal.output, Some(&journal), keep_free)? {
+            if !no_space_check && !report(&job, &journal.output, Some(&journal), keep_free)? {
                 return Ok(ExitCode::from(EXIT_NO_SPACE));
             }
             session::clear_uncommitted(&job, &journal.output)?;
             (job, journal)
         }
         State::Fresh(job, out) => {
-            if !report(&job, &out, None, keep_free)? {
+            if !no_space_check && !report(&job, &out, None, keep_free)? {
                 return Ok(ExitCode::from(EXIT_NO_SPACE));
+            }
+            if no_space_check {
+                say!(
+                    "{DIM}Space check skipped; extraction starts now and pauses if the disk fills.{DIM:#}"
+                );
             }
             if verify_first && let Err(e) = verify(&job) {
                 eprintln!("{ERROR}error:{ERROR:#} {e:#}");

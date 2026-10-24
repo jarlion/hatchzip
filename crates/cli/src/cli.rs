@@ -81,7 +81,11 @@ pub enum Command {
         visible_alias = "x",
         long_about = "Extract an archive, removing it progressively.\n\n\
             Prints the space plan and asks for confirmation before starting. After an \
-            interruption by Ctrl+C, a crash or a full disk, run the same command to resume."
+            interruption by Ctrl+C, a crash or a full disk, run the same command to resume.\n\n\
+            Pass --no-space-check to start immediately without first working out whether the \
+            disk has room. The run then pauses (saving progress) only if the disk actually \
+            fills, so nothing is lost; this mainly saves the up-front check on formats that \
+            scan the whole archive to measure it."
     )]
     Extract {
         #[command(flatten)]
@@ -94,6 +98,11 @@ pub enum Command {
         /// Skip the confirmation prompt (required outside a terminal)
         #[arg(short, long)]
         yes: bool,
+        /// Start extracting without first checking that there is enough disk
+        /// space. The archive is still scanned, but the run begins immediately
+        /// and stops (saving progress) only if the disk actually fills.
+        #[arg(long)]
+        no_space_check: bool,
     },
     /// Show the space plan for an archive without modifying it
     #[command(visible_alias = "c")]

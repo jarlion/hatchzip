@@ -42,7 +42,9 @@ fn run(launch: Launch) -> Result<()> {
     slint::set_xdg_app_id(APP_ID)?;
     match launch {
         Launch::Main(archive) => main_window::run(archive, drops),
-        Launch::Task(kind, archive) => task_window::run(kind, archive),
+        Launch::Task(kind, archive, no_space_check) => {
+            task_window::run(kind, archive, no_space_check)
+        }
         Launch::RegisterShell | Launch::UnregisterShell => unreachable!("handled above"),
     }
 }
