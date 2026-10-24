@@ -294,7 +294,7 @@ fn test(
 ) -> Result<()> {
     send(Update::Checking);
     let (primary, paths) = session::locate(archive)?;
-    let job = match open(&primary, &paths, None, false, secret, send)? {
+    let job = match open(&primary, &paths, None, false, secret, true, send)? {
         State::Fresh(job, _) => job,
         _ => bail!(
             "this archive is partially extracted and cannot be tested. Resume or restore it first"

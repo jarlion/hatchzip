@@ -46,9 +46,9 @@ fn load(archive: &Path, password: Option<String>) -> Result<Loaded> {
         .to_string_lossy()
         .into_owned();
     let (state, password) =
-        session::open_encrypted(&primary, &paths, None, false, password, true, |wrong| {
+        session::open_encrypted(&primary, &paths, None, false, password, |wrong| {
             crate::password::ask(&file_name, wrong)
-        })?;
+        }, true)?;
     let (job, mode, output, total, left) = match state {
         State::Fresh(job, out) => {
             let total = job.remaining_size();
