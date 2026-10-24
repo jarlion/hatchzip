@@ -368,13 +368,12 @@ fn extract(
         },
         keep_free,
     };
-    let (outcome, job) = run.execute()?;
+    let (outcome, count) = run.execute()?;
     bar.finish_and_clear();
 
-    // Read the entry count after the run: with --no-space-check the entry list
-    // is rebuilt as the single extraction pass decodes the stream, so it is only
-    // known once extraction finishes.
-    let count = job.item_count();
+    // The count is read after the run: with --no-space-check the entry list
+    // is rebuilt as the single extraction pass decodes the stream, so it is
+    // only known once extraction finishes.
     match outcome {
         Outcome::Finished => {
             say!(
