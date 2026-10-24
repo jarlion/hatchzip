@@ -276,7 +276,8 @@ fn extract(
         },
         keep_free,
     };
-    match run.execute()? {
+    let (outcome, _job) = run.execute()?;
+    match outcome {
         Outcome::Finished => {
             counters.archive.store(0, Ordering::Relaxed);
             send(Update::Extracted(output));

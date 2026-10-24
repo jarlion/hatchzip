@@ -616,7 +616,7 @@ pub struct Run<'a> {
 }
 
 impl Run<'_> {
-    pub fn execute(mut self) -> Result<Outcome> {
+    pub fn execute(mut self) -> Result<(Outcome, Job)> {
         let out = self.journal.output.clone();
         fs::create_dir_all(&out)
             .with_context(|| format!("creating output folder {}", out.display()))?;
@@ -625,12 +625,12 @@ impl Run<'_> {
         let mut next = 0;
         while next < self.job.units.len() {
             if self.stop.load(Ordering::Relaxed) {
-                return Ok(Outcome::Paused);
+                return Ok((Outcome::Paused, self.job));
             }
             if let Some(solid) = self.job.format.solid() {
                 let walk = solid.walk(self.job.resumed(next))?;
                 let Some(links) = self.stream_solid(next, walk, reclaims, &out)? else {
-                    return Ok(Outcome::Paused);
+                    return Ok((Outcome::Paused, self.job));
                 };
                 self.commit(next, next + 1, links, &out)?;
                 next += 1;
@@ -638,7 +638,7 @@ impl Run<'_> {
             }
             if let Some(stream) = self.stream_now(next, reclaims, &out)? {
                 if !self.stream_unit(next, &stream, &out)? {
-                    return Ok(Outcome::Paused);
+                    return Ok((Outcome::Paused, self.job));
                 }
                 self.commit(next, next + 1, Vec::new(), &out)?;
                 next += 1;
@@ -648,14 +648,14 @@ impl Run<'_> {
             let batch = &self.job.units[next..end];
 
             let Some(links) = self.extract_batch(batch, &out)? else {
-                return Ok(Outcome::Paused);
+                return Ok((Outcome::Paused, self.job));
             };
             self.commit(next, end, links, &out)?;
             next = end;
         }
 
         self.finish(&out)?;
-        Ok(Outcome::Finished)
+        Ok((Outcome::Finished, self.job))
     }
 
     /// Commits `units[start..end]`, all extracted, and truncates the archive

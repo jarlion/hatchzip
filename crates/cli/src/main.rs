@@ -356,7 +356,6 @@ fn extract(
     bar.set_message(format!("archive: {}", human(journal.committed_len)));
 
     let output = journal.output.clone();
-    let count = job.item_count();
     let (b1, b2) = (bar.clone(), bar.clone());
     let run = Run {
         job,
@@ -369,11 +368,15 @@ fn extract(
         },
         keep_free,
     };
-    let outcome = run.execute();
+    let (outcome, job) = run.execute()?;
     bar.finish_and_clear();
 
+    // Read the entry count after the run: with --no-space-check the entry list
+    // is rebuilt as the single extraction pass decodes the stream, so it is only
+    // known once extraction finishes.
+    let count = job.item_count();
     match outcome {
-        Ok(Outcome::Finished) => {
+        Outcome::Finished => {
             say!(
                 "{GOOD}Extraction complete:{GOOD:#} {} in {}. The archive was removed.",
                 entries(count),
@@ -381,14 +384,9 @@ fn extract(
             );
             Ok(ExitCode::SUCCESS)
         }
-        Ok(Outcome::Paused) => {
+        Outcome::Paused => {
             say!("Extraction paused. Run the same command to resume.");
             Ok(ExitCode::from(EXIT_PAUSED))
-        }
-        Err(e) => {
-            eprintln!("{ERROR}error:{ERROR:#} {e:#}");
-            eprintln!("Progress is saved. Run the same command to resume.");
-            Ok(ExitCode::from(EXIT_FAILURE))
         }
     }
 }
