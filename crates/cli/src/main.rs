@@ -72,8 +72,8 @@ fn open(
     output: Option<std::path::PathBuf>,
     writable: bool,
     secret: Secret,
-    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
-    /// Set by `--no-space-check`, which never needs the plan.
+    // Skip the full measuring pass for a compressed tar (see `archive::open`).
+    // Set by `--no-space-check`, which never needs the plan.
     scan: bool,
 ) -> Result<(State, Paths)> {
     let (primary, paths) = locate(archive)?;

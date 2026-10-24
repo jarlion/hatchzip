@@ -509,7 +509,7 @@ pub fn open(storage: &Arc<Storage>, from: Option<&Resume>, scan: bool) -> Result
     let (items, profile) = if !scan && from.is_none() {
         (Vec::new(), Profile::default())
     } else {
-        scan(&solid, from)
+        measure(&solid, from)
             .map_err(|e| anyhow::Error::new(super::Damaged(e)))
             .with_context(|| format!("checking {name} (nothing was changed)"))?
     };
@@ -530,7 +530,7 @@ pub fn open(storage: &Arc<Storage>, from: Option<&Resume>, scan: bool) -> Result
     })
 }
 
-fn scan(solid: &Solid, from: Option<&Resume>) -> Result<(Vec<Item>, Profile)> {
+fn measure(solid: &Solid, from: Option<&Resume>) -> Result<(Vec<Item>, Profile)> {
     let start = from.map_or(0, |r| r.bit / 8);
     let mut w = solid.walk(from)?;
     let mut items = Vec::new();

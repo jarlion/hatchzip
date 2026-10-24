@@ -93,8 +93,8 @@ impl Job {
         path: &Path,
         writable: bool,
         password: Option<&str>,
-        /// Skip the full measuring pass for a compressed tar (see `archive::open`).
-        scan: bool,
+    // Skip the full measuring pass for a compressed tar (see `archive::open`).
+    scan: bool,
     ) -> Result<Self> {
         let storage = Arc::new(Storage::open(path, writable)?);
         let opened = archive::open(&storage, None, password, scan)?;

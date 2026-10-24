@@ -160,10 +160,10 @@ pub fn open(
     storage: &Arc<Storage>,
     resume: Option<(&str, Arc<Tail>, Option<&Resume>)>,
     password: Option<&str>,
-    /// When false, a compressed tar (`.tar.gz`) is opened without the full
-    /// decode pass that measures its `Profile`. Used by `--no-space-check`,
-    /// which skips the plan and goes straight to extraction: the single
-    /// decode in `stream_solid` then does both jobs. Other formats ignore it.
+    // When false, a compressed tar (`.tar.gz`) is opened without the full
+    // decode pass that measures its `Profile`. Used by `--no-space-check`,
+    // which skips the plan and goes straight to extraction: the single
+    // decode in `stream_solid` then does both jobs. Other formats ignore it.
     scan: bool,
 ) -> Result<Opened> {
     let (name, tail, point) = match resume {

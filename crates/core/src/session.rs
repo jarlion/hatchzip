@@ -40,7 +40,7 @@ pub fn open(
     output: Option<PathBuf>,
     writable: bool,
     password: Option<&str>,
-    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+    // Skip the full measuring pass for a compressed tar (see `archive::open`).
     scan: bool,
 ) -> Result<State> {
     if paths.exists() {
@@ -91,7 +91,7 @@ pub fn open_encrypted(
     writable: bool,
     mut password: Option<String>,
     mut ask: impl FnMut(bool) -> Option<String>,
-    /// Skip the full measuring pass for a compressed tar (see `archive::open`).
+    // Skip the full measuring pass for a compressed tar (see `archive::open`).
     scan: bool,
 ) -> Result<(State, Option<String>)> {
     let mut wrong = false;
