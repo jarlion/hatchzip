@@ -25,3 +25,6 @@ All notable changes to HatchZip are documented here. The format is based on
 ### Changed
 - Bumped the version to `0.2.0` so builds are easy to tell apart. The installer
   and release artifacts pick this up automatically from `hatchzip --version`.
+- The progress total is published as soon as the one decode pass has listed
+  every entry, so a skipped-check extraction of a compressed tar no longer
+  reports an unknown (zero) total while it runs.

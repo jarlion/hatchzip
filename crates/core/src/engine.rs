@@ -598,6 +598,10 @@ fn read_window(file: &mut File, written: u64) -> Result<Vec<u8>> {
 pub struct Progress {
     pub on_bytes: Box<dyn Fn(u64) + Sync>,
     pub on_commit: Box<dyn Fn(u64) + Sync>,
+    /// Publishes the total output size once it is known. A run that skipped
+    /// the measuring scan only learns it when the one decode pass has listed
+    /// every entry; for scanned runs it repeats the planned total.
+    pub on_total: Box<dyn Fn(u64) + Sync>,
 }
 
 pub enum Outcome {
@@ -633,6 +637,11 @@ impl Run<'_> {
                     return Ok((Outcome::Paused, self.job.item_count()));
                 };
                 self.commit(next, next + 1, links, &out)?;
+                // The whole stream is decoded, so every entry is listed: the
+                // total is now known even when the scan was skipped (it then
+                // repeats the planned total, which changes nothing).
+                let total = self.job.units[next].items.iter().map(|i| i.size).sum();
+                (self.progress.on_total)(total);
                 next += 1;
                 continue;
             }
@@ -935,6 +944,12 @@ impl Run<'_> {
         // that as "remaining output unknown" with `u64::MAX` so the per-point
         // guard still enforces a safe step-sized bound instead of demanding room
         // for all output, or bailing outright.
+        //
+        // It likewise leaves `units[i].items` empty; rebuild it as we decode the
+        // one stream, so the final entry count and `commit`'s dir sync stay
+        // correct. A scanned open already filled it, so this is a no-op then,
+        // and for a resumed run, which always scans.
+        let rebuild = self.job.units[i].items.is_empty();
         let mut left = if profile.files > 0 { profile.files } else { u64::MAX };
         // This run hasn't punched anything yet. Its first punch starts at 0,
         // in case the last run stopped between journaling a point and
@@ -953,12 +968,7 @@ impl Run<'_> {
             }
             match walk.next(BUF_SIZE)? {
                 Event::Entry { item, link, done } => {
-                    // A skipped scan (--no-space-check) leaves `units[i].items`
-                    // empty; rebuild it as we decode the one stream, so the
-                    // final entry count and `commit`'s dir sync stay correct.
-                    // A scanned open already filled it, so this is a no-op
-                    // then, and for a resumed run, which always scans.
-                    if self.job.units[i].items.is_empty() {
+                    if rebuild {
                         self.job.units[i].items.push(item.clone());
                     }
                     let dest = out.join(&item.path);

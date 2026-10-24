@@ -356,7 +356,7 @@ fn extract(
     bar.set_message(format!("archive: {}", human(journal.committed_len)));
 
     let output = journal.output.clone();
-    let (b1, b2) = (bar.clone(), bar.clone());
+    let (b1, b2, b3) = (bar.clone(), bar.clone(), bar.clone());
     let run = Run {
         job,
         journal,
@@ -365,6 +365,7 @@ fn extract(
         progress: Progress {
             on_bytes: Box::new(move |n| b1.inc(n)),
             on_commit: Box::new(move |len| b2.set_message(format!("archive: {}", human(len)))),
+            on_total: Box::new(move |n| b3.set_length(n)),
         },
         keep_free,
     };

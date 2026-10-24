@@ -262,7 +262,7 @@ fn extract(
         .store(journal.committed_len, Ordering::Relaxed);
     send(Update::Working(output.clone()));
 
-    let (c1, c2) = (counters.clone(), counters.clone());
+    let (c1, c2, c3) = (counters.clone(), counters.clone(), counters.clone());
     let run = Run {
         job,
         journal,
@@ -273,6 +273,7 @@ fn extract(
                 c1.done.fetch_add(n, Ordering::Relaxed);
             }),
             on_commit: Box::new(move |len| c2.archive.store(len, Ordering::Relaxed)),
+            on_total: Box::new(move |n| c3.total.store(n, Ordering::Relaxed)),
         },
         keep_free,
     };
